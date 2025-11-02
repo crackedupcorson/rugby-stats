@@ -1,0 +1,105 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Rugby Player Performance Data",
+  "type": "object",
+  "properties": {
+    "match_id": { "type": "string", "description": "Unique identifier for the match (e.g. '2025-11-01-IRE-NZL')" },
+    "competition": { "type": "string", "description": "Tournament or league name (e.g. 'Autumn Nations Series')" },
+    "date": { "type": "string", "format": "date" },
+    "team": { "type": "string" },
+    "opponent": { "type": "string" },
+    "venue": { "type": "string" },
+    "result": { "type": "string", "enum": ["Win", "Loss", "Draw"] },
+    "player": {
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "position": { "type": "string" },
+        "minutes_played": { "type": "number" },
+        "starter": { "type": "boolean" },
+        "subbed_on": { "type": "boolean" },
+        "subbed_off": { "type": "boolean" }
+      },
+      "required": ["name", "position"]
+    },
+    "attack": {
+      "type": "object",
+      "properties": {
+        "carries": { "type": "number" },
+        "meters_gained": { "type": "number" },
+        "meters_per_carry": { "type": "number" },
+        "defenders_beaten": { "type": "number" },
+        "clean_breaks": { "type": "number" },
+        "offloads": { "type": "number" },
+        "line_break_assists": { "type": "number" },
+        "tries": { "type": "number" },
+        "try_assists": { "type": "number" },
+        "passes": { "type": "number" },
+        "handling_errors": { "type": "number" }
+      }
+    },
+    "defense": {
+      "type": "object",
+      "properties": {
+        "tackles_made": { "type": "number" },
+        "tackles_missed": { "type": "number" },
+        "tackle_success_rate": { "type": "number" },
+        "dominant_tackles": { "type": "number" },
+        "turnovers_won": { "type": "number" },
+        "penalties_conceded": { "type": "number" }
+      }
+    },
+    "set_piece": {
+      "type": "object",
+      "properties": {
+        "lineouts_won_on_own_throw": { "type": "number" },
+        "lineouts_stolen": { "type": "number" },
+        "scrums_won_on_own_feed": { "type": "number" },
+        "scrums_lost_on_own_feed": { "type": "number" }
+      }
+    },
+    "kicking": {
+      "type": "object",
+      "properties": {
+        "kicks_from_hand": { "type": "number" },
+        "kicking_meters": { "type": "number" },
+        "goal_kicks_attempted": { "type": "number" },
+        "goal_kicks_made": { "type": "number" },
+        "conversion_success_rate": { "type": "number" }
+      }
+    },
+    "discipline": {
+      "type": "object",
+      "properties": {
+        "yellow_cards": { "type": "number" },
+        "red_cards": { "type": "number" },
+        "penalties_conceded": { "type": "number" }
+      }
+    },
+    "breakdown": {
+      "type": "object",
+      "properties": {
+        "rucks_hit": { "type": "number" },
+        "rucks_won": { "type": "number" },
+        "turnovers_won": { "type": "number" },
+        "turnovers_lost": { "type": "number" }
+      }
+    },
+    "ratings": {
+      "type": "object",
+      "properties": {
+        "player_rating": { "type": "number", "description": "If available, rating from data source (e.g., RugbyPass 10.0 scale)" },
+        "source": { "type": "string", "description": "Name of site providing the rating" }
+      }
+    },
+    "source_meta": {
+      "type": "object",
+      "properties": {
+        "data_source": { "type": "string", "description": "Name of site or API (e.g., 'ESPN Scrum', 'RugbyPass', 'Opta')" },
+        "data_accuracy": { "type": "string", "enum": ["Official", "Unofficial", "Crowdsourced"] },
+        "last_updated": { "type": "string", "format": "date-time" }
+      }
+    }
+  },
+  "required": ["match_id", "date", "team", "player", "source_meta"]
+}
