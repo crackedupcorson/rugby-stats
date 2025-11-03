@@ -1,0 +1,6 @@
+team,url,status,fetched_at,embedded_json
+ireland,https://www.rugbypass.com/stats/team/ireland/,404,2025-11-03 10:35:27,data\preview_ireland_embedded.json
+leinster,https://www.rugbypass.com/stats/team/leinster/,404,2025-11-03 10:35:41,data\preview_leinster_embedded.json
+munster,https://www.rugbypass.com/stats/team/munster/,404,2025-11-03 10:35:55,data\preview_munster_embedded.json
+ulster,https://www.rugbypass.com/stats/team/ulster/,404,2025-11-03 10:36:07,data\preview_ulster_embedded.json
+connacht,https://www.rugbypass.com/stats/team/connacht/,404,2025-11-03 10:36:19,data\preview_connacht_embedded.json
