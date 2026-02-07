@@ -8,10 +8,10 @@ from typing import List, Dict, Any, Optional
 import logging
 import time
 
-from rugby_stats.client import fetch_player_season_stats, RateLimitError
-from rugby_stats.metrics import extract_metrics
-from rugby_stats.normalization import normalize_metrics
-from rugby_stats.scoring import compute_all_scores
+from client import fetch_player_season_stats, RateLimitError
+from metrics import extract_metrics
+from normalization import normalize_metrics
+from scoring import compute_all_scores
 
 logger = logging.getLogger(__name__)
 
