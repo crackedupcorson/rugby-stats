@@ -59,7 +59,7 @@ def fetch_squad(
     return resp.json()
 
 
-def extract_player_ids(raw_squad_response: Dict[str, Any]) -> List[str]:
+def extract_player_ids(raw_squad_response: Dict[str, Any]) -> List[tuple]:
     """Extract all player IDs from squad response.
     
     Returns:
@@ -73,7 +73,8 @@ def extract_player_ids(raw_squad_response: Dict[str, Any]) -> List[str]:
             for player in squad["squad"]:
                 player_id = player.get("playerId")
                 if player_id is not None:
-                    player_ids.append(str(player_id))
+                    name = f"{player.get('playerFirstName', '')} {player.get('playerLastName', '')}".strip()
+                    player_ids.append((player_id, name))
     except (KeyError, TypeError) as e:
         logger.error(f"Failed to extract player IDs: {e}")
         return []

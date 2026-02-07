@@ -16,7 +16,8 @@ processor = BatchProcessor(season=season, backoff_seconds=backoff_seconds)
 @app.route('/player/stats')
 def get_player_stats(): 
     player_id = int(request.args.get('player_id'))
-    return processor.process_player(player_id)
+    player_name = request.args.get('player_name', '')
+    return processor.process_player(player_id, player_name)
 
 
 @app.route('/team/player-stats')
@@ -25,7 +26,8 @@ def get_player_stats_for_team():
     """Fetch and process stats for all players in a team."""
     squad_data = squad.fetch_squad(team_id)
     player_ids = squad.extract_player_ids(squad_data)
-    response = processor.process_batch(player_ids)
+    player_details = squad.extract_squad_details(squad_data)
+    response = processor.process_batch(player_ids, player_details=player_details)
     logging.info(f"Processed stats for team {team_id} with {len(player_ids)} players")
     return response, 200
 

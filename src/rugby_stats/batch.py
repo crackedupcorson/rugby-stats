@@ -28,10 +28,19 @@ class BatchProcessor:
     def process_player(
         self,
         player_id: str,
+        player_name: str,
         minutes_played: Optional[float] = None,
         appearances: Optional[int] = None,
+        position: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Process a single player; handle errors gracefully.
+        
+        Args:
+            player_id: player ID
+            player_name: player name
+            minutes_played: optional minutes played (for normalization)
+            appearances: optional number of appearances
+            position: player position/jersey number (for role-based weighting)
         
         Returns:
             result dict with either 'error' or full pipeline output
@@ -40,7 +49,8 @@ class BatchProcessor:
         
         try:
             # Fetch
-            logger.info(f"Fetching player {player_id}...")
+        
+            logger.info(f"Fetching player {player_id}{player_name}...")
             raw_response = fetch_player_season_stats([player_id], season_id=self.season)
             
             # Check for GraphQL errors
@@ -51,6 +61,7 @@ class BatchProcessor:
                 self.failures.append(result)
                 return result
             
+            result["name"]= player_name
             # Extract metrics
             extracted = extract_metrics(raw_response)
             result["raw_metrics"] = extracted
@@ -59,9 +70,10 @@ class BatchProcessor:
             normalized = normalize_metrics(extracted, minutes_played, appearances)
             result["normalized_metrics"] = normalized
             
-            # Score
-            derived = compute_all_scores(normalized)
+            # Score (with role-based weighting)
+            derived = compute_all_scores(normalized, player_position=position)
             result["derived_metrics"] = derived
+            result["position"] = position
             
             logger.info(f"  ✓ Composite score: {derived['composite_contribution']['score']:.2f}")
             self.results.append(result)
@@ -84,13 +96,20 @@ class BatchProcessor:
     
     def process_batch(
         self,
-        player_ids: List[str],
+        player_ids: List[tuple],
         minutes_played: Optional[float] = None,
         appearances: Optional[int] = None,
+        player_details: Optional[List[Dict[str, Any]]] = None,
     ) -> Dict[str, Any]:
         """Process all players in batch; partial failures allowed.
         
         Applies backoff_seconds delay between batches for rate limiting.
+        
+        Args:
+            player_ids: list of (player_id, player_name) tuples
+            minutes_played: optional minutes played (for normalization)
+            appearances: optional number of appearances
+            player_details: optional list of dicts with 'playerId', 'position', etc.
         
         Returns:
             summary: {
@@ -106,14 +125,25 @@ class BatchProcessor:
         self.results = []
         self.failures = []
         
+        # Build position lookup from player_details
+        position_lookup = {}
+        if player_details:
+            for detail in player_details:
+                player_id = detail.get("playerId")
+                position = detail.get("position")
+                if player_id and position:
+                    position_lookup[str(player_id)] = position
+        
         # Process in sub-batches with backoff
         batch_size = 5
         for i in range(0, len(player_ids), batch_size):
             batch = player_ids[i:i+batch_size]
             logger.info(f"Processing sub-batch {i//batch_size + 1} ({len(batch)} players)...")
             
-            for player_id in batch:
-                self.process_player(player_id, minutes_played, appearances)
+            for player_id, player_name in batch:
+                # Look up position if available
+                position = position_lookup.get(str(player_id))
+                self.process_player(player_id, player_name, minutes_played, appearances, position=position)
             
             # Apply backoff between batches (except after the last one)
             if i + batch_size < len(player_ids) and self.backoff_seconds > 0:

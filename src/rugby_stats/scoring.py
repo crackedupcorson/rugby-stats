@@ -5,9 +5,12 @@ Computes:
 - Defensive Reliability Score
 - Discipline Risk Index
 - Composite Player Contribution Score
+
+Supports role-based metric weighting for different player positions.
 """
 from typing import Dict, Optional, Any
 import logging
+from roles import get_role_weights, extract_role_weights
 
 logger = logging.getLogger(__name__)
 
@@ -47,11 +50,22 @@ COMPOSITE_BLEND_WEIGHTS = {
 def compute_unstructured_impact_score(
     metrics: Dict[str, Optional[Any]],
     weights: Optional[Dict[str, float]] = None,
+    role: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Compute unstructured play impact (attack, ball-winning, evasion).
     
+    Args:
+        metrics: player metrics dict
+        weights: optional override weights dict
+        role: player role (FRONT_5, BACK_ROW, HALF_BACKS, BACKS) for role-based weighting
+    
     Returns score (0-100 scale) and component breakdown.
     """
+    # Use role-based weights if role provided and no override weights given
+    if role and not weights:
+        role_weights = get_role_weights(role)
+        weights = role_weights.get("unstructured", UNSTRUCTURED_PLAY_WEIGHTS)
+    
     weights = weights or UNSTRUCTURED_PLAY_WEIGHTS
     
     components = {}
@@ -86,17 +100,29 @@ def compute_unstructured_impact_score(
         "score": round(score, 2),
         "components": components,
         "method": "weighted attack metrics (0-100)",
+        "role": role,
     }
 
 
 def compute_defensive_reliability_score(
     metrics: Dict[str, Optional[Any]],
     weights: Optional[Dict[str, float]] = None,
+    role: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Compute defensive consistency (tackling, turnovers, success %).
     
+    Args:
+        metrics: player metrics dict
+        weights: optional override weights dict
+        role: player role for role-based weighting
+    
     Returns score (0-100) and breakdown.
     """
+    # Use role-based weights if role provided and no override weights given
+    if role and not weights:
+        role_weights = get_role_weights(role)
+        weights = role_weights.get("defensive", DEFENSIVE_RELIABILITY_WEIGHTS)
+    
     weights = weights or DEFENSIVE_RELIABILITY_WEIGHTS
     
     components = {}
@@ -128,17 +154,29 @@ def compute_defensive_reliability_score(
         "score": round(score, 2),
         "components": components,
         "method": "weighted defence metrics (0-100)",
+        "role": role,
     }
 
 
 def compute_discipline_risk_index(
     metrics: Dict[str, Optional[Any]],
     weights: Optional[Dict[str, float]] = None,
+    role: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Compute discipline cost (penalties, cards).
     
+    Args:
+        metrics: player metrics dict
+        weights: optional override weights dict
+        role: player role for role-based weighting
+    
     Returns score (0-100 where 0 = high risk, 100 = clean).
     """
+    # Use role-based weights if role provided and no override weights given
+    if role and not weights:
+        role_weights = get_role_weights(role)
+        weights = role_weights.get("discipline", DISCIPLINE_RISK_WEIGHTS)
+    
     weights = weights or DISCIPLINE_RISK_WEIGHTS
     
     components = {}
@@ -161,6 +199,7 @@ def compute_discipline_risk_index(
         "score": round(score, 2),  # 100 = clean, 0 = very risky
         "components": components,
         "method": "weighted discipline costs (0-100)",
+        "role": role,
     }
 
 
@@ -169,11 +208,24 @@ def compute_composite_contribution_score(
     defensive_score: float,
     discipline_score: float,
     weights: Optional[Dict[str, float]] = None,
+    role: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Blend the three sub-scores into a composite 0-100 player value.
     
     All inputs are 0-100 scale.
+    
+    Args:
+        unstructured_score: unstructured play score (0-100)
+        defensive_score: defensive reliability score (0-100)
+        discipline_score: discipline risk score (0-100)
+        weights: optional override weights dict
+        role: player role for role-based weighting
     """
+    # Use role-based weights if role provided and no override weights given
+    if role and not weights:
+        role_weights = get_role_weights(role)
+        weights = role_weights.get("composite_blend", COMPOSITE_BLEND_WEIGHTS)
+    
     weights = weights or COMPOSITE_BLEND_WEIGHTS
     
     total = (
@@ -194,16 +246,19 @@ def compute_composite_contribution_score(
             "discipline": round(discipline_score * weights["discipline"] / total_weights, 2),
         },
         "method": "composite blend (attack 40%, defence 40%, discipline 20%)",
+        "role": role,
     }
 
 
 def compute_all_scores(
     normalized_metrics: Dict[str, Optional[Any]],
+    player_position: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Compute all derived scores for a player.
     
     Args:
         normalized_metrics: dict with 'raw', 'per_80_min', 'per_appearance', etc.
+        player_position: player jersey number or position (for role-based weighting)
     
     Returns:
         all_scores: {
@@ -211,8 +266,13 @@ def compute_all_scores(
             'defensive_reliability': {...},
             'discipline_risk': {...},
             'composite_contribution': {...},
+            'role': {...},
         }
     """
+    # Determine role from position
+    from roles import get_role_from_position
+    role = get_role_from_position(player_position)
+    
     # Use best available normalization
     if normalized_metrics.get("per_80_min"):
         metrics_to_use = normalized_metrics["per_80_min"]
@@ -221,13 +281,14 @@ def compute_all_scores(
     else:
         metrics_to_use = normalized_metrics.get("raw", {})
     
-    unstructured = compute_unstructured_impact_score(metrics_to_use)
-    defensive = compute_defensive_reliability_score(metrics_to_use)
-    discipline = compute_discipline_risk_index(metrics_to_use)
+    unstructured = compute_unstructured_impact_score(metrics_to_use, role=role)
+    defensive = compute_defensive_reliability_score(metrics_to_use, role=role)
+    discipline = compute_discipline_risk_index(metrics_to_use, role=role)
     composite = compute_composite_contribution_score(
         unstructured["score"],
         defensive["score"],
         discipline["score"],
+        role=role,
     )
     
     return {
@@ -235,4 +296,6 @@ def compute_all_scores(
         "defensive_reliability": defensive,
         "discipline_risk": discipline,
         "composite_contribution": composite,
+        "role": role,
+        "position": player_position,
     }
