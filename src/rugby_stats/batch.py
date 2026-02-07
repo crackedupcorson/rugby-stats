@@ -19,9 +19,10 @@ logger = logging.getLogger(__name__)
 class BatchProcessor:
     """Process multiple players; track successes and failures."""
     
-    def __init__(self, season: int = 202501, backoff_seconds: float = 0):
+    def __init__(self, season: int = 202501, backoff_seconds: float = 0, batch_size: int = 10):
         self.season = season
         self.backoff_seconds = backoff_seconds  # delay between batches
+        self.batch_size = batch_size # number of players to process before backoff
         self.results = []
         self.failures = []
     
@@ -135,10 +136,9 @@ class BatchProcessor:
                     position_lookup[str(player_id)] = position
         
         # Process in sub-batches with backoff
-        batch_size = 5
-        for i in range(0, len(player_ids), batch_size):
-            batch = player_ids[i:i+batch_size]
-            logger.info(f"Processing sub-batch {i//batch_size + 1} ({len(batch)} players)...")
+        for i in range(0, len(player_ids), self.batch_size):
+            batch = player_ids[i:i+self.batch_size]
+            logger.info(f"Processing sub-batch {i//self.batch_size + 1} ({len(batch)} players)...")
             
             for player_id, player_name in batch:
                 # Look up position if available
@@ -146,7 +146,7 @@ class BatchProcessor:
                 self.process_player(player_id, player_name, minutes_played, appearances, position=position)
             
             # Apply backoff between batches (except after the last one)
-            if i + batch_size < len(player_ids) and self.backoff_seconds > 0:
+            if i + self.batch_size < len(player_ids) and self.backoff_seconds > 0:
                 logger.info(f"Backoff: sleeping {self.backoff_seconds}s before next batch...")
                 time.sleep(self.backoff_seconds)
         
